@@ -1,0 +1,35 @@
+# ===========================================
+# CONFIGMAP : Variables d'environnement Laravel
+# ===========================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wave-env
+data:
+  # Application Laravel
+  APP_NAME: "Wave"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "http://localhost:8000"
+  
+  # Base de données
+  DB_CONNECTION: "mysql"
+  DB_HOST: "db"
+  DB_PORT: "3306"
+  DB_DATABASE: "wave"
+  MYSQL_DATABASE: "wave"
+  MYSQL_USER: "wave-user"
+  
+  # Redis
+  REDIS_HOST: "wave-redis"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""
+  
+  # Cache & Session
+  CACHE_DRIVER: "redis"
+  SESSION_DRIVER: "redis"
+  QUEUE_CONNECTION: "redis"
+  
+  # Logging
+  LOG_CHANNEL: "stderr"
+  LOG_LEVEL: "info"

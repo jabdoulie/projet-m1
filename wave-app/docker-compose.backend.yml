@@ -1,0 +1,36 @@
+# ===========================================
+# BACKEND : PHP-FPM (Laravel Application)
+# ===========================================
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: wave-backend:latest
+    container_name: wave-app
+    working_dir: /var/www/wave
+    restart: always
+    volumes:
+      - .:/var/www/wave
+      - ./storage:/var/www/wave/storage
+      - ./bootstrap/cache:/var/www/wave/bootstrap/cache
+    env_file:
+      - .env
+    environment:
+      - APP_URL=${APP_URL}
+      - DB_CONNECTION=${DB_CONNECTION}
+      - DB_HOST=wave-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=wave-user
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=wave-redis
+      - REDIS_PORT=6379
+    networks:
+      - wave_network
+
+networks:
+  wave_network:
+    external: true
+    name: wave_network
+

@@ -1,0 +1,77 @@
+# ===========================================
+# SERVICES : Exposition des pods
+# ===========================================
+
+# Service PHP-FPM (wave-app)
+apiVersion: v1
+kind: Service
+metadata:
+  name: wave-app
+  labels:
+    app: wave-app
+spec:
+  selector:
+    app: wave-app
+  ports:
+    - name: php-fpm
+      protocol: TCP
+      port: 9000
+      targetPort: 9000
+  type: ClusterIP
+
+---
+
+# Service MySQL (db)
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  labels:
+    app: wave-db
+spec:
+  selector:
+    app: wave-db
+  ports:
+    - name: mysql
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+  type: ClusterIP
+
+---
+
+# Service Redis
+apiVersion: v1
+kind: Service
+metadata:
+  name: wave-redis
+  labels:
+    app: wave-redis
+spec:
+  selector:
+    app: wave-redis
+  ports:
+    - name: redis
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+  type: ClusterIP
+
+---
+
+# Service Nginx (LoadBalancer - exposition externe)
+apiVersion: v1
+kind: Service
+metadata:
+  name: wave-nginx
+  labels:
+    app: wave-nginx
+spec:
+  selector:
+    app: wave-nginx
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer

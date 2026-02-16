@@ -1,0 +1,56 @@
+# ===========================================
+# DATABASE : MariaDB + Redis
+# ===========================================
+services:
+  # Base de données MariaDB
+  db:
+    image: mariadb:latest
+    container_name: wave-db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: wave-user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - wave_network
+
+  # Cache Redis
+  redis:
+    image: redis:alpine
+    container_name: wave-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wave_network
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  wave_network:
+    driver: bridge
+    name: wave_network
+

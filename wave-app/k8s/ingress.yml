@@ -1,0 +1,36 @@
+# ===========================================
+# INGRESS : Exposition avec nom de domaine
+# ===========================================
+# Prérequis: activer l'ingress sur MicroK8s
+# microk8s enable ingress
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wave-ingress
+  labels:
+    app: wave
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    # Remplacer par votre domaine ou utiliser localhost pour les tests
+    - host: wave.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wave-nginx
+                port:
+                  number: 80
+  # Décommentez pour activer HTTPS avec cert-manager
+  # tls:
+  #   - hosts:
+  #       - wave.local
+  #     secretName: wave-tls-secret
+

@@ -1,0 +1,75 @@
+services:
+  app:
+    image: wave-image  # Utilisez l'image déjà construite
+    container_name: wave-app
+    working_dir: /var/www/wave
+    volumes:
+      - .:/var/www/wave
+      - ./storage:/var/www/wave/storage
+      - ./bootstrap/cache:/var/www/wave/bootstrap/cache
+    env_file:
+      - .env  # Utilisation du fichier .env pour récupérer les variables d'environnement
+    environment:
+      - APP_URL=${APP_URL}
+      - DB_CONNECTION=${DB_CONNECTION}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_DATABASE=${DB_DATABASE}
+      - DB_USERNAME=wave-user
+      - DB_PASSWORD=${DB_PASSWORD}
+    command: /bin/sh -c "npm run build"   # Lancer npm run dev en arrière-plan et garder le conteneur actif 
+    depends_on:
+      - db
+      - redis
+    networks:
+      - wave_mynetwork
+
+  db:
+    image: mariadb:latest
+    container_name: wave-db
+    restart: always
+    env_file:
+      - .env  # Utilisation du fichier .env pour r  cup  rer les variables d'environnement
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: wave-user
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - wave_mynetwork
+
+  redis:
+    image: redis:latest
+    container_name: wave-redis
+    restart: always
+    ports:
+      - "6380:6379"
+    networks:
+      - wave_mynetwork
+
+  nginx:
+    image: nginx:latest
+    container_name: wave-nginx
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./storage:/var/www/wave/storage
+      - ./bootstrap/cache:/var/www/wave/bootstrap/cache
+      - .:/var/www/wave
+    depends_on:
+      - app
+    networks:
+      - wave_mynetwork
+
+volumes:
+  db_data:
+
+networks:
+  wave_mynetwork:
+    driver: bridge

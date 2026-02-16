@@ -1,0 +1,280 @@
+# ===========================================
+# DEPLOYMENT : Laravel Application (wave-app)
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wave-app
+  labels:
+    app: wave-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wave-app
+  template:
+    metadata:
+      labels:
+        app: wave-app
+    spec:
+      containers:
+        - name: wave-app
+          image: abdoulie/wave-image:latest
+          imagePullPolicy: Always
+          workingDir: /var/www/wave
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: wave-env
+            - secretRef:
+                name: wave-secrets
+          volumeMounts:
+            - name: wave-storage
+              mountPath: /var/www/wave/storage
+            - name: wave-cache
+              mountPath: /var/www/wave/bootstrap/cache
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # Health checks
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: wave-storage
+          persistentVolumeClaim:
+            claimName: wave-storage-pvc
+        - name: wave-cache
+          persistentVolumeClaim:
+            claimName: wave-cache-pvc
+
+---
+
+# ===========================================
+# DEPLOYMENT : MySQL Database (wave-db)
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wave-db
+  labels:
+    app: wave-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wave-db
+  template:
+    metadata:
+      labels:
+        app: wave-db
+    spec:
+      containers:
+        - name: wave-db
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wave-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: wave-env
+                  key: MYSQL_DATABASE
+            - name: MYSQL_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: wave-env
+                  key: MYSQL_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: wave-secrets
+                  key: MYSQL_PASSWORD
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          # Health check MySQL
+          livenessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - localhost
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - mysqladmin
+                - ping
+                - -h
+                - localhost
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: db-data-pvc
+
+---
+
+# ===========================================
+# DEPLOYMENT : Redis (wave-redis)
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wave-redis
+  labels:
+    app: wave-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wave-redis
+  template:
+    metadata:
+      labels:
+        app: wave-redis
+    spec:
+      containers:
+        - name: wave-redis
+          image: redis:7-alpine
+          command: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          # Health check Redis
+          livenessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - redis-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data-pvc
+
+---
+
+# ===========================================
+# DEPLOYMENT : NGINX Web Server (wave-nginx)
+# ===========================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wave-nginx
+  labels:
+    app: wave-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wave-nginx
+  template:
+    metadata:
+      labels:
+        app: wave-nginx
+    spec:
+      # Init container pour copier les fichiers statiques
+      initContainers:
+        - name: copy-static-files
+          image: abdoulie/wave-image:latest
+          command: ['sh', '-c', 'cp -r /var/www/wave/public /shared/public']
+          volumeMounts:
+            - name: shared-public
+              mountPath: /shared
+      containers:
+        - name: wave-nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: shared-public
+              mountPath: /var/www/wave/public
+              subPath: public
+            - name: wave-storage
+              mountPath: /var/www/wave/storage
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          # Health check Nginx
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: wave-nginx-config
+        - name: shared-public
+          emptyDir: {}
+        - name: wave-storage
+          persistentVolumeClaim:
+            claimName: wave-storage-pvc
