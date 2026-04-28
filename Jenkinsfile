@@ -191,6 +191,19 @@ pipeline {
                 '''
             }
         }
+
+        // stage('Run Pipeline') {
+        //     steps {
+        //         script {
+        //             fullPipeline(
+        //                 appDir: "${APP_DIR}",
+        //                 dockerTag: "${DOCKER_TAG}",
+        //                 projectKey: "wave-project",
+        //                 projectName: "Wave Application"
+        //             )
+        //         }
+        //     }
+        // }
     }
 
     post {
