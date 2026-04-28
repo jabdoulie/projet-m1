@@ -1,9 +1,9 @@
 ---
 # ===========================================
 # PLAYBOOK : Installation de FluxCD
-# Cible : Serveur avec MicroK8s (Frontend ou Backend)
+# Cible : Noeud principal du cluster MicroK8s (Frontend)
 # ===========================================
-- name: Installer et configurer FluxCD
+- name: Installer et configurer FluxCD sur le noeud frontend
   hosts: frontend
   become: true
   vars:
@@ -80,7 +80,7 @@
 
     - name: Copier les fichiers de configuration Flux
       copy:
-        src: "../flux/"
+        src: "{{ playbook_dir }}/../flux/"
         dest: /home/ubuntu/flux-config/
         owner: ubuntu
         group: ubuntu

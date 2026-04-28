@@ -1,7 +1,7 @@
 ---
 # ===========================================
 # PLAYBOOK : Installation de MicroK8s
-# Cible : Serveurs Frontend et Backend
+# Cible : Serveurs Frontend et Backend du cluster applicatif
 # ===========================================
 - name: Installer et configurer MicroK8s
   hosts: webservers

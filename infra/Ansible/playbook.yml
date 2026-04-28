@@ -1,7 +1,7 @@
 ---
 # ===========================================
 # PLAYBOOK PRINCIPAL : Configuration de l'infrastructure Wave
-# Architecture : Frontend/Backend (MicroK8s + FluxCD) + Database (Docker) + Monitoring + Jenkins
+# Architecture : Frontend/Backend (cluster MicroK8s, FluxCD sur frontend) + Database (Docker) + Monitoring + Jenkins
 # ===========================================
 
 # ===========================================
@@ -55,8 +55,7 @@
 # ===========================================
 # ETAPE 2 : Configuration du serveur Database (MySQL + Redis)
 # ===========================================
-- name: Configurer le serveur Database
-  import_playbook: playbook-database.yml
+- import_playbook: playbook-database.yml
 
 # ===========================================
 # ETAPE 3 : Configuration du serveur Monitoring (Zabbix + Grafana)
@@ -163,14 +162,12 @@
 # ===========================================
 # ETAPE 5 : Installation de MicroK8s sur Frontend/Backend
 # ===========================================
-- name: Installer MicroK8s
-  import_playbook: playbook-microk8s.yml
+- import_playbook: playbook-microk8s.yml
 
 # ===========================================
 # ETAPE 6 : Installation de FluxCD
 # ===========================================
-- name: Installer FluxCD
-  import_playbook: playbook-fluxcd.yml
+- import_playbook: playbook-fluxcd.yml
 
 # ===========================================
 # RESUME FINAL
@@ -187,8 +184,8 @@
           ================================================
           
           1. SERVEURS CONFIGURES :
-             - Frontend : MicroK8s + FluxCD (Nginx)
-             - Backend  : MicroK8s + FluxCD (PHP-FPM)
+             - Frontend : MicroK8s + FluxCD (noeud principal / Nginx)
+             - Backend  : MicroK8s (noeud applicatif / PHP-FPM)
              - Database : Docker Compose (MySQL + Redis)
              - Monitoring : Zabbix + Grafana
              - Jenkins  : Jenkins + SonarQube
