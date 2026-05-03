@@ -19,7 +19,7 @@ variable "instance_type" {
 variable "instance_names" {
   description = "Les noms des instances à créer"
   type        = list(string)
-  default     = ["Frontend", "Backend", "Database", "Monitoring", "Jenkins"]
+  default     = ["Frontend", "Backend", "Database", "Monitoring"]
 }
 
 variable "instance_ports" {
@@ -52,13 +52,6 @@ variable "instance_ports" {
       { port = 3000, protocol = "tcp", description = "Grafana" },
       { port = 9090, protocol = "tcp", description = "Prometheus" },
       { port = 3100, protocol = "tcp", description = "Loki" },
-      { port = 9100, protocol = "tcp", description = "node_exporter" }
-    ]
-    "Jenkins" = [
-      { port = 22, protocol = "tcp", description = "SSH" },
-      { port = 8085, protocol = "tcp", description = "Jenkins Web" },
-      { port = 9000, protocol = "tcp", description = "SonarQube" },
-      { port = 50000, protocol = "tcp", description = "Jenkins Agent" },
       { port = 9100, protocol = "tcp", description = "node_exporter" }
     ]
   }

@@ -139,9 +139,6 @@ resource "local_file" "inventory_ini" {
     [monitoring]
     ${var.instance_names[3]} ansible_host=${aws_instance.my_instances[3].public_ip} ansible_ssh_private_key_file=./keys/${var.instance_names[3]}_private_key.pem
 
-    [jenkins]
-    ${var.instance_names[4]} ansible_host=${aws_instance.my_instances[4].public_ip} ansible_ssh_private_key_file=./keys/${var.instance_names[4]}_private_key.pem
-
     [webservers:children]
     frontend
     backend
@@ -151,7 +148,6 @@ resource "local_file" "inventory_ini" {
     backend
     database
     monitoring
-    jenkins
   EOF
 
   filename = "../Ansible/inventory.ini"

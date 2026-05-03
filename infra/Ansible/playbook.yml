@@ -1,7 +1,7 @@
 ---
 # ===========================================
 # PLAYBOOK PRINCIPAL : Configuration de l'infrastructure Wave
-# Architecture : Frontend/Backend (cluster MicroK8s, FluxCD sur frontend) + Database (Docker) + Monitoring + Jenkins
+# Architecture : Frontend/Backend (cluster MicroK8s, FluxCD sur frontend) + Database (Docker) + Monitoring (CI/CD : GitHub Actions)
 # ===========================================
 
 # ===========================================
@@ -68,75 +68,12 @@
 - import_playbook: playbook-observability-agents.yml
 
 # ===========================================
-# ETAPE 4 : Configuration du serveur Jenkins (CI/CD)
-# ===========================================
-- name: Installer Jenkins et SonarQube
-  hosts: jenkins
-  become: true
-  tasks:
-    - name: Créer le répertoire devtools
-      file:
-        path: /home/devtools
-        state: directory
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
-
-    - name: Copier le fichier docker-compose.yml pour Jenkins
-      copy:
-        src: ./docker-compose.yml
-        dest: /home/devtools/docker-compose.yml
-        owner: ubuntu
-        group: ubuntu
-        mode: '0644'
-
-    - name: Démarrer Jenkins et SonarQube
-      command: docker compose up -d
-      args:
-        chdir: /home/devtools/
-
-    - name: Attendre que Jenkins soit prêt
-      wait_for:
-        port: 8085
-        delay: 30
-        timeout: 300
-
-    - name: Récupérer l'IP du serveur Jenkins
-      shell: hostname -I | awk '{print $1}'
-      register: jenkins_ip
-      changed_when: false
-
-    - name: Récupérer le mot de passe initial Jenkins
-      shell: docker exec jenkins_container cat /var/jenkins_home/secrets/initialAdminPassword 2>/dev/null || echo "En attente..."
-      register: jenkins_password
-      changed_when: false
-      retries: 5
-      delay: 30
-      until: jenkins_password.stdout != "En attente..."
-
-    - name: Afficher les informations Jenkins
-      debug:
-        msg: |
-          ================================================
-          Jenkins et SonarQube configurés !
-          
-          Jenkins:
-            - URL (accès depuis ton PC): http://{{ ansible_host }}:8085
-            - IP privée VPC (réseau interne): {{ jenkins_ip.stdout }}
-            - Mot de passe initial: {{ jenkins_password.stdout }}
-          
-          SonarQube:
-            - URL (accès depuis ton PC): http://{{ ansible_host }}:9000
-            - Login: admin / admin
-          ================================================
-
-# ===========================================
-# ETAPE 5 : Installation de MicroK8s sur Frontend/Backend
+# ETAPE 4 : Installation de MicroK8s sur Frontend/Backend
 # ===========================================
 - import_playbook: playbook-microk8s.yml
 
 # ===========================================
-# ETAPE 6 : Installation de FluxCD
+# ETAPE 5 : Installation de FluxCD
 # ===========================================
 - import_playbook: playbook-fluxcd.yml
 
@@ -159,13 +96,13 @@
              - Backend  : MicroK8s (noeud applicatif / PHP-FPM)
              - Database : Docker Compose (MySQL + Redis)
              - Monitoring : Prometheus + Loki + Grafana (agents : node_exporter + Promtail)
-             - Jenkins  : Jenkins + SonarQube
+             - CI/CD      : GitHub Actions + SonarCloud (pas de VM Jenkins)
           
           2. PROCHAINES ETAPES :
              a) Mettre à jour wave-env.yml avec l'IP du serveur Database
              b) Configurer le repo Git dans FluxCD (wave-source.yaml)
-             c) Pousser le code sur GitHub pour déclencher FluxCD
-             d) Configurer Jenkins avec les credentials Docker Hub
+             c) Pousser le code sur GitHub pour déclencher FluxCD et la pipeline Actions
+             d) Configurer les secrets GitHub (Docker Hub, SONAR_TOKEN) pour publier les images Docker
           
           3. COMMANDES UTILES :
              - Vérifier MicroK8s: microk8s status
