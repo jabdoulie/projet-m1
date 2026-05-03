@@ -1,0 +1,14 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  wave:
+    # Évite une boucle infinie après le commit GitOps ([skip ci] comme dans le Jenkinsfile)
+    if: ${{ !(github.event_name == 'push' && github.event.head_commit != null && contains(github.event.head_commit.message, '[skip ci]')) }}
+    uses: ./.github/workflows/reusable-wave-ci.yml
+    secrets: inherit

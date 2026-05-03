@@ -8,7 +8,7 @@
   become: true
   vars:
     flux_version: "2.2.3"
-    github_owner: "VOTRE_USERNAME"
+    github_owner: "jabdoulie"
     github_repo: "projet-m1"
     github_branch: "main"
 
@@ -93,11 +93,7 @@
       register: flux_apply
       changed_when: "'created' in flux_apply.stdout or 'configured' in flux_apply.stdout"
 
-- name: Afficher les instructions post-installation
-  hosts: frontend
-  gather_facts: false
-  tasks:
-    - name: Instructions FluxCD
+    - name: Instructions FluxCD (post-installation)
       debug:
         msg: |
           ================================================

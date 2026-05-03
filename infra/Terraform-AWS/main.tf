@@ -109,7 +109,7 @@ resource "aws_security_group" "instance_sgs" {
 resource "aws_instance" "my_instances" {
   count               = var.instance_count * length(var.instance_names)  # Nombre d'instances
   ami                 = data.aws_ami.server_ami.id
-  instance_type       = "t2.micro"
+  instance_type       = var.instance_type
   key_name            = aws_key_pair.instance_keys[var.instance_names[count.index]].key_name  # Clé SSH spécifique à chaque instance
   vpc_security_group_ids = [aws_security_group.instance_sgs[var.instance_names[count.index]].id]
   subnet_id           = aws_subnet.dev_pub_subnet.id
@@ -119,22 +119,13 @@ resource "aws_instance" "my_instances" {
   }
 }
 
-# Bucket S3
-resource "aws_s3_bucket" "dev_s3_bucket" {
-  bucket = "my-dev-env-s3"
-
-  tags = {
-    Name        = "My bucket"
-    Environment = "dev"
-  }
-}
-
 resource "local_file" "inventory_ini" {
   content = <<-EOF
     [all:vars]
     ansible_python_interpreter=/usr/bin/python3
     ansible_user=ubuntu
     ansible_connection=ssh
+    ansible_ssh_common_args=-o StrictHostKeyChecking=no
 
     [frontend]
     ${var.instance_names[0]} ansible_host=${aws_instance.my_instances[0].public_ip} ansible_ssh_private_key_file=./keys/${var.instance_names[0]}_private_key.pem

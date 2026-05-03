@@ -10,6 +10,12 @@ variable "instance_count" {
   default     = 1  # Par défaut, 1 instance sera créée. Modifiez selon vos besoins.
 }
 
+variable "instance_type" {
+  description = "Type EC2 (t3.medium = 4 Go RAM, adapté à MicroK8s ; t2.micro insuffisant pour 2 nœuds K8s)"
+  type        = string
+  default     = "t3.medium"
+}
+
 variable "instance_names" {
   description = "Les noms des instances à créer"
   type        = list(string)
@@ -27,28 +33,33 @@ variable "instance_ports" {
     "Frontend" = [
       { port = 22, protocol = "tcp", description = "SSH" },
       { port = 80, protocol = "tcp", description = "HTTP" },
-      { port = 443, protocol = "tcp", description = "HTTPS" }
+      { port = 443, protocol = "tcp", description = "HTTPS" },
+      { port = 9100, protocol = "tcp", description = "node_exporter" }
     ]
     "Backend" = [
       { port = 22, protocol = "tcp", description = "SSH" },
       { port = 9000, protocol = "tcp", description = "PHP-FPM" },
-      { port = 6379, protocol = "tcp", description = "Redis" }
+      { port = 6379, protocol = "tcp", description = "Redis" },
+      { port = 9100, protocol = "tcp", description = "node_exporter" }
     ]
     "Database" = [
       { port = 22, protocol = "tcp", description = "SSH" },
-      { port = 3306, protocol = "tcp", description = "MySQL" }
+      { port = 3306, protocol = "tcp", description = "MySQL" },
+      { port = 9100, protocol = "tcp", description = "node_exporter" }
     ]
     "Monitoring" = [
       { port = 22, protocol = "tcp", description = "SSH" },
-      { port = 80, protocol = "tcp", description = "Zabbix Web" },
       { port = 3000, protocol = "tcp", description = "Grafana" },
-      { port = 10051, protocol = "tcp", description = "Zabbix Server" }
+      { port = 9090, protocol = "tcp", description = "Prometheus" },
+      { port = 3100, protocol = "tcp", description = "Loki" },
+      { port = 9100, protocol = "tcp", description = "node_exporter" }
     ]
     "Jenkins" = [
       { port = 22, protocol = "tcp", description = "SSH" },
-      { port = 8080, protocol = "tcp", description = "Jenkins Web" },
+      { port = 8085, protocol = "tcp", description = "Jenkins Web" },
       { port = 9000, protocol = "tcp", description = "SonarQube" },
-      { port = 50000, protocol = "tcp", description = "Jenkins Agent" }
+      { port = 50000, protocol = "tcp", description = "Jenkins Agent" },
+      { port = 9100, protocol = "tcp", description = "node_exporter" }
     ]
   }
 }

@@ -58,44 +58,14 @@
 - import_playbook: playbook-database.yml
 
 # ===========================================
-# ETAPE 3 : Configuration du serveur Monitoring (Zabbix + Grafana)
+# ETAPE 3 : Monitoring (Prometheus + Loki + Grafana)
 # ===========================================
-- name: Installer Zabbix et Grafana
-  hosts: monitoring
-  become: true
-  tasks:
-    - name: Créer le répertoire monitoring
-      file:
-        path: /home/monitoring
-        state: directory
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
+- import_playbook: playbook-monitoring.yml
 
-    - name: Cloner le dépôt Zabbix et Grafana Docker
-      git:
-        repo: https://github.com/akmalovaa/zabbix-docker.git
-        dest: /home/monitoring
-        update: yes
-
-    - name: Démarrer les services Zabbix et Grafana
-      command: docker compose up -d
-      args:
-        chdir: /home/monitoring
-
-    - name: Récupérer l'IP du serveur Monitoring
-      shell: hostname -I | awk '{print $1}'
-      register: monitoring_ip
-      changed_when: false
-
-    - name: Afficher les URLs de monitoring
-      debug:
-        msg: |
-          ================================================
-          Monitoring configuré !
-          - Zabbix: http://{{ monitoring_ip.stdout }}:80
-          - Grafana: http://{{ monitoring_ip.stdout }}:3000
-          ================================================
+# ===========================================
+# ETAPE 3b : Agents node_exporter + Promtail sur tous les serveurs
+# ===========================================
+- import_playbook: playbook-observability-agents.yml
 
 # ===========================================
 # ETAPE 4 : Configuration du serveur Jenkins (CI/CD)
@@ -151,11 +121,12 @@
           Jenkins et SonarQube configurés !
           
           Jenkins:
-            - URL: http://{{ jenkins_ip.stdout }}:8085
+            - URL (accès depuis ton PC): http://{{ ansible_host }}:8085
+            - IP privée VPC (réseau interne): {{ jenkins_ip.stdout }}
             - Mot de passe initial: {{ jenkins_password.stdout }}
           
           SonarQube:
-            - URL: http://{{ jenkins_ip.stdout }}:9000
+            - URL (accès depuis ton PC): http://{{ ansible_host }}:9000
             - Login: admin / admin
           ================================================
 
@@ -187,7 +158,7 @@
              - Frontend : MicroK8s + FluxCD (noeud principal / Nginx)
              - Backend  : MicroK8s (noeud applicatif / PHP-FPM)
              - Database : Docker Compose (MySQL + Redis)
-             - Monitoring : Zabbix + Grafana
+             - Monitoring : Prometheus + Loki + Grafana (agents : node_exporter + Promtail)
              - Jenkins  : Jenkins + SonarQube
           
           2. PROCHAINES ETAPES :

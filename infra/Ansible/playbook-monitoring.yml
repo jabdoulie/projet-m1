@@ -1,0 +1,73 @@
+---
+# Stack Prometheus + Loki + Grafana sur la VM monitoring
+- name: Déployer Prometheus Loki Grafana
+  hosts: monitoring
+  become: true
+  tasks:
+    - name: Créer les répertoires monitoring
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+      loop:
+        - /home/monitoring
+        - /home/monitoring/prometheus
+        - /home/monitoring/monitoring
+        - /home/monitoring/monitoring/grafana/provisioning/datasources
+
+    - name: Générer prometheus.yml
+      template:
+        src: prometheus.yml.j2
+        dest: /home/monitoring/prometheus/prometheus.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Copier la configuration Loki et provisioning Grafana
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+      loop:
+        - { src: monitoring/loki-config.yaml, dest: /home/monitoring/monitoring/loki-config.yaml }
+        - { src: monitoring/grafana/provisioning/datasources/datasources.yml, dest: /home/monitoring/monitoring/grafana/provisioning/datasources/datasources.yml }
+
+    - name: Copier docker-compose monitoring
+      copy:
+        src: docker-compose.monitoring.yml
+        dest: /home/monitoring/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Démarrer Prometheus Loki Grafana
+      command: docker compose up -d
+      args:
+        chdir: /home/monitoring
+      register: monitoring_compose
+
+    - name: Attendre Grafana (port 3000)
+      wait_for:
+        port: 3000
+        delay: 10
+        timeout: 300
+
+    - name: Récupérer l'IP privée monitoring
+      shell: hostname -I | awk '{print $1}'
+      register: monitoring_private_ip
+      changed_when: false
+
+    - name: Résumé monitoring
+      debug:
+        msg: |
+          ================================================
+          Monitoring : Prometheus + Loki + Grafana
+          - Grafana: http://{{ ansible_host }}:3000 (admin / admin)
+          - Prometheus: http://{{ ansible_host }}:9090
+          - Loki (push interne): http://{{ monitoring_private_ip.stdout }}:3100
+          IP privée VPC: {{ monitoring_private_ip.stdout }}
+          ================================================

@@ -1,0 +1,19 @@
+# Généré par Ansible — cibles node_exporter (port 9100)
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: node
+    static_configs:
+{% for host in groups['serveurs'] | sort %}
+{% set hv = hostvars[host] %}
+{% set ip = hv.get('ansible_default_ipv4', {}).get('address', hv.get('ansible_host', host)) %}
+      - targets: ["{{ ip }}:9100"]
+        labels:
+          instance: "{{ host }}"
+{% endfor %}

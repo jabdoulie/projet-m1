@@ -6,14 +6,8 @@
 - name: Installer et configurer MicroK8s
   hosts: webservers
   become: true
-  vars:
-    microk8s_addons:
-      - dns
-      - storage
-      - ingress
-      - registry
-      - hostpath-storage
-
+  # Un seul nœud à la fois : évite la contention CPU/RAM sur t2.micro (timeouts API :16443).
+  serial: 1
   tasks:
     - name: Installer snapd
       apt:
@@ -41,19 +35,46 @@
         group: ubuntu
         mode: '0755'
 
-    - name: Attendre que MicroK8s soit prêt
-      command: /snap/bin/microk8s status --wait-ready
+    - name: Attendre que l'API Kubernetes réponde (MicroK8s prêt)
+      command: /snap/bin/microk8s kubectl get nodes
       changed_when: false
-      retries: 5
-      delay: 10
-      register: microk8s_status
-      until: microk8s_status.rc == 0
+      retries: 90
+      delay: 15
+      register: kube_api_wait
+      until: kube_api_wait.rc == 0
 
-    - name: Activer les addons MicroK8s
-      command: "/snap/bin/microk8s enable {{ item }}"
-      loop: "{{ microk8s_addons }}"
-      register: addon_result
-      changed_when: "'is already enabled' not in addon_result.stdout"
+    # Pas de "storage" (déprécié -> hostpath-storage). Pas de "registry" si Docker Hub + Flux (charge API sur t2.micro).
+    - name: Activer addon dns
+      command: /snap/bin/microk8s enable dns
+      register: addon_dns
+      retries: 6
+      delay: 45
+      until: addon_dns.rc == 0
+      changed_when: "'already enabled' not in (addon_dns.stdout | default('') | lower)"
+
+    - name: Pause après dns (stabilisation API)
+      pause:
+        seconds: 20
+
+    - name: Activer addon hostpath-storage
+      command: /snap/bin/microk8s enable hostpath-storage
+      register: addon_storage
+      retries: 6
+      delay: 45
+      until: addon_storage.rc == 0
+      changed_when: "'already enabled' not in (addon_storage.stdout | default('') | lower)"
+
+    - name: Pause après stockage
+      pause:
+        seconds: 20
+
+    - name: Activer addon ingress
+      command: /snap/bin/microk8s enable ingress
+      register: addon_ingress
+      retries: 6
+      delay: 45
+      until: addon_ingress.rc == 0
+      changed_when: "'already enabled' not in (addon_ingress.stdout | default('') | lower)"
 
     - name: Générer le fichier kubeconfig
       shell: /snap/bin/microk8s config > /home/ubuntu/.kube/config

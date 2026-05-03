@@ -1,0 +1,208 @@
+# Équivalent GitHub Actions du Jenkinsfile racine (Wave / monorepo).
+#
+# Secrets dépôt (Settings → Secrets → Actions) :
+#   SONAR_TOKEN          → analyse SonarCloud (optionnel ; étape ignorée si vide)
+#   DOCKER_IMAGE         → ex. abdoulie/wave-image (comme credential docker-image-name)
+#   DOCKER_USERNAME      → Docker Hub (comme docker-hub-credentials)
+#   DOCKER_PASSWORD      → Docker Hub token / mot de passe
+#
+# Sur push vers main uniquement : build image, Trivy image, push Docker Hub,
+# commit deployment.yml (message avec [skip ci]), comme le Jenkinsfile.
+
+name: Reusable Wave CI/CD
+
+on:
+  workflow_call:
+    inputs:
+      php-version:
+        description: Version PHP (étape tests, alignée sur php:8.2-cli du Jenkinsfile)
+        type: string
+        required: false
+        default: "8.2"
+      app-dir:
+        description: Répertoire application Laravel
+        type: string
+        required: false
+        default: wave-app
+    secrets:
+      SONAR_TOKEN:
+        description: Token SonarCloud
+        required: false
+      DOCKER_IMAGE:
+        description: Nom image Docker Hub (sans tag)
+        required: false
+      DOCKER_USERNAME:
+        description: Docker Hub username
+        required: false
+      DOCKER_PASSWORD:
+        description: Docker Hub password ou token
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: wave-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOCKER_TAG: ${{ github.run_number }}
+
+jobs:
+  pipeline:
+    name: Pipeline (équivalent Jenkinsfile)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # --- Install Dependencies (composer, comme Jenkins) ---
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: mbstring, xml, ctype, pdo_sqlite, sqlite3, tokenizer
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: ${{ runner.os }}-composer-${{ hashFiles(format('{0}/composer.lock', inputs.app-dir)) }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Dependencies
+        working-directory: ${{ inputs.app-dir }}
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      # --- Unit Tests (Pest + JUnit) ---
+      - name: Préparer SQLite et .env pour les tests
+        working-directory: ${{ inputs.app-dir }}
+        run: |
+          cp .env.example .env
+          mkdir -p storage/test-results database
+          touch database/database.sqlite
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env || true
+          sed -i 's/^DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/' .env || true
+          php artisan key:generate --force
+          php artisan migrate --force --no-interaction || true
+
+      - name: Unit Tests (Pest)
+        working-directory: ${{ inputs.app-dir }}
+        run: ./vendor/bin/pest --ci --colors=always --log-junit storage/test-results/junit.xml
+
+      - name: Rapport JUnit
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit-${{ github.run_id }}
+          path: ${{ inputs.app-dir }}/storage/test-results/*.xml
+          if-no-files-found: ignore
+
+      # --- Trivy FS (racine du dépôt, comme Jenkins : trivy fs .) ---
+      - name: Trivy FS Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: "."
+          format: table
+          output: trivyfs-report.txt
+          exit-code: "0"
+          ignore-unfixed: true
+
+      - name: Archive trivyfs-report.txt
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivyfs-report
+          path: trivyfs-report.txt
+          if-no-files-found: ignore
+
+      # --- SonarCloud (remplace SonarQube self-hosted + sonar-scanner Jenkins) ---
+      - name: SonarCloud Scan
+        if: ${{ secrets.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          projectBaseDir: ${{ inputs.app-dir }}
+
+      # --- Docker build / Trivy image / push / GitOps (push main uniquement) ---
+      - name: Set up Docker Buildx
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker Image
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        env:
+          DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
+        run: |
+          docker build -t "${DOCKER_IMAGE}:${DOCKER_TAG}" -t "${DOCKER_IMAGE}:latest" "${{ inputs.app-dir }}"
+
+      - name: Trivy Docker Image Scan
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ secrets.DOCKER_IMAGE }}:${{ github.run_number }}
+          format: table
+          output: trivy-image-report.txt
+          exit-code: "0"
+
+      - name: Archive trivy-image-report.txt
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-report
+          path: trivy-image-report.txt
+          if-no-files-found: ignore
+
+      - name: Push Docker Image to Docker Hub
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        env:
+          DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
+        run: |
+          docker push "${DOCKER_IMAGE}:${DOCKER_TAG}"
+          docker push "${DOCKER_IMAGE}:latest"
+
+      - name: Update K8s Manifests
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        env:
+          DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
+        run: |
+          sed -i "s|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${DOCKER_TAG}|g" "${{ inputs.app-dir }}/k8s/deployment.yml"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add "${{ inputs.app-dir }}/k8s/deployment.yml"
+          git commit -m "ci: update image tag to ${DOCKER_TAG} [skip ci]" || echo "No changes to commit"
+          git push origin "HEAD:${{ github.ref_name }}"
+
+      - name: Trigger FluxCD Reconciliation (informationnel)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        run: |
+          echo "================================================"
+          echo "FluxCD va automatiquement détecter les changements et déployer"
+          echo "Le déploiement est géré par FluxCD (GitOps)"
+          echo "================================================"
+
+      - name: Nettoyage images Docker locales
+        if: always()
+        env:
+          DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
+        run: |
+          if [ -n "${DOCKER_IMAGE}" ]; then
+            docker rmi "${DOCKER_IMAGE}:${DOCKER_TAG}" || true
+            docker rmi "${DOCKER_IMAGE}:latest" || true
+          fi
+          docker image prune -f || true

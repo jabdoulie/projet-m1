@@ -1,0 +1,37 @@
+---
+# node_exporter + Promtail sur tous les serveurs (y compris monitoring)
+- name: Déployer node_exporter et Promtail
+  hosts: serveurs
+  become: true
+  gather_facts: true
+  vars:
+    loki_push_url: "http://{{ hostvars[groups['monitoring'][0]]['ansible_default_ipv4']['address'] }}:3100/loki/api/v1/push"
+  tasks:
+    - name: Répertoire observabilité
+      file:
+        path: /home/observability
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: "0755"
+
+    - name: Config Promtail
+      template:
+        src: promtail-config.yml.j2
+        dest: /home/observability/promtail-config.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Docker compose agents
+      copy:
+        src: docker-compose.agents.yml
+        dest: /home/observability/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: "0644"
+
+    - name: Démarrer node_exporter et promtail
+      command: docker compose up -d
+      args:
+        chdir: /home/observability
