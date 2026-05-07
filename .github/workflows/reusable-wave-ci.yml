@@ -49,6 +49,8 @@ env:
   DOCKER_TAG: ${{ github.run_number }}
   # Flag temporaire pour ignorer tout le déploiement (sans supprimer les étapes)
   ENABLE_DEPLOY: "false"
+  # Anticipe la migration GitHub Actions vers Node.js 24
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   pipeline:
@@ -90,7 +92,7 @@ jobs:
           sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env || true
           sed -i 's/^DB_DATABASE=.*/DB_DATABASE=database\/database.sqlite/' .env || true
           php artisan key:generate --force
-          php artisan migrate --force --no-interaction || true
+          php artisan migrate:fresh --seed --force --no-interaction
 
       - name: Unit Tests (Pest)
         working-directory: ${{ inputs.app-dir }}
