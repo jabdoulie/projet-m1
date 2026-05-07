@@ -39,8 +39,7 @@ on:
         required: false
 
 permissions:
-  contents: write
-  pull-requests: read
+  contents: read
 
 concurrency:
   group: wave-ci-${{ github.ref }}
