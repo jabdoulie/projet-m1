@@ -48,6 +48,8 @@ concurrency:
 
 env:
   DOCKER_TAG: ${{ github.run_number }}
+  # Flag temporaire pour ignorer tout le déploiement (sans supprimer les étapes)
+  ENABLE_DEPLOY: "false"
 
 jobs:
   pipeline:
@@ -121,9 +123,30 @@ jobs:
           path: trivyfs-report.txt
           if-no-files-found: ignore
 
+      - name: Compute CI gates
+        id: gates
+        run: |
+          if [ -n "${{ secrets.SONAR_TOKEN }}" ]; then
+            echo "has_sonar_token=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_sonar_token=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "is_main_push=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_main_push=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${{ secrets.DOCKER_IMAGE }}" ] && [ -n "${{ secrets.DOCKER_USERNAME }}" ] && [ -n "${{ secrets.DOCKER_PASSWORD }}" ]; then
+            echo "has_docker_creds=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_docker_creds=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # --- SonarCloud (remplace SonarQube self-hosted + sonar-scanner Jenkins) ---
       - name: SonarCloud Scan
-        if: ${{ secrets.SONAR_TOKEN != '' }}
+        if: ${{ steps.gates.outputs.has_sonar_token == 'true' }}
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -133,25 +156,25 @@ jobs:
 
       # --- Docker build / Trivy image / push / GitOps (push main uniquement) ---
       - name: Set up Docker Buildx
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Login Docker Hub
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker Image
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         env:
           DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
         run: |
           docker build -t "${DOCKER_IMAGE}:${DOCKER_TAG}" -t "${DOCKER_IMAGE}:latest" "${{ inputs.app-dir }}"
 
       - name: Trivy Docker Image Scan
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: image
@@ -161,7 +184,7 @@ jobs:
           exit-code: "0"
 
       - name: Archive trivy-image-report.txt
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: trivy-image-report
@@ -169,7 +192,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Push Docker Image to Docker Hub
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         env:
           DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
         run: |
@@ -177,7 +200,7 @@ jobs:
           docker push "${DOCKER_IMAGE}:latest"
 
       - name: Update K8s Manifests
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         env:
           DOCKER_IMAGE: ${{ secrets.DOCKER_IMAGE }}
         run: |
@@ -189,7 +212,7 @@ jobs:
           git push origin "HEAD:${{ github.ref_name }}"
 
       - name: Trigger FluxCD Reconciliation (informationnel)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCKER_IMAGE != '' && secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' }}
+        if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
         run: |
           echo "================================================"
           echo "FluxCD va automatiquement détecter les changements et déployer"
