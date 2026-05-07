@@ -106,7 +106,7 @@ jobs:
 
       # --- Trivy FS (racine du dépôt, comme Jenkins : trivy fs .) ---
       - name: Trivy FS Scan
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: "."
@@ -174,7 +174,7 @@ jobs:
 
       - name: Trivy Docker Image Scan
         if: ${{ env.ENABLE_DEPLOY == 'true' && steps.gates.outputs.is_main_push == 'true' && steps.gates.outputs.has_docker_creds == 'true' }}
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@master
         with:
           scan-type: image
           image-ref: ${{ secrets.DOCKER_IMAGE }}:${{ github.run_number }}
