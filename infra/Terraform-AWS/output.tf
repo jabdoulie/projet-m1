@@ -34,3 +34,11 @@ output "instance_ids" {
   description = "IDs des instances créées"
   value       = [for instance in aws_instance.my_instances : instance.id]
 }
+
+output "instance_root_volume_sizes" {
+  description = "Taille (Go) du volume root EBS par instance"
+  value = {
+    for idx, name in var.instance_names :
+    name => aws_instance.my_instances[idx].root_block_device[0].volume_size
+  }
+}

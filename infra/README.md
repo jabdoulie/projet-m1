@@ -6,6 +6,7 @@ Ce répertoire décrit le déploiement des machines **AWS** et leur configuratio
 
 - **Rôle** : création d’un VPC (CIDR `10.123.0.0/16`), sous-réseau public, passerelle Internet, **4 instances EC2** nommées `Frontend`, `Backend`, `Database`, `Monitoring`.
 - **Type d’instance** : variable `instance_type` (défaut `t3.medium`, ~4 Go RAM) pour supporter MicroK8s.
+- **Disque root EBS** : `instance_root_volume_sizes` (défaut Frontend **30 Go**, Monitoring **25 Go**, Backend/Database **20 Go**, type `gp3`) — évite le taint `disk-pressure` sur MicroK8s (l’AMI Ubuntu seule ne fournit que ~8 Go).
 - **Clés SSH** : une paire par instance, fichiers privés écrits dans `Ansible/keys/` (hors commit recommandé).
 - **Groupes de sécurité** : ports ouverts selon `variables.tf` (SSH, services applicatifs, Grafana 3000, Prometheus 9090, Loki 3100, node_exporter 9100, etc.).
 - **Inventaire Ansible** : ressource `local_file` qui génère `../Ansible/inventory.ini` avec les IP publiques et les chemins de clés.

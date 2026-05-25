@@ -107,12 +107,19 @@ resource "aws_security_group" "instance_sgs" {
 
 # Création des instances EC2 avec des clés SSH dynamiques
 resource "aws_instance" "my_instances" {
-  count               = var.instance_count * length(var.instance_names)  # Nombre d'instances
-  ami                 = data.aws_ami.server_ami.id
-  instance_type       = var.instance_type
-  key_name            = aws_key_pair.instance_keys[var.instance_names[count.index]].key_name  # Clé SSH spécifique à chaque instance
+  count                  = var.instance_count * length(var.instance_names)
+  ami                    = data.aws_ami.server_ami.id
+  instance_type          = var.instance_type
+  key_name               = aws_key_pair.instance_keys[var.instance_names[count.index]].key_name
   vpc_security_group_ids = [aws_security_group.instance_sgs[var.instance_names[count.index]].id]
-  subnet_id           = aws_subnet.dev_pub_subnet.id
+  subnet_id              = aws_subnet.dev_pub_subnet.id
+
+  root_block_device {
+    volume_size           = lookup(var.instance_root_volume_sizes, var.instance_names[count.index], var.default_root_volume_size)
+    volume_type           = var.root_volume_type
+    delete_on_termination = true
+    encrypted             = false
+  }
 
   tags = {
     Name = var.instance_names[count.index]
