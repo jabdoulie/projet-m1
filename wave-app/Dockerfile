@@ -1,8 +1,8 @@
 # Utiliser une image officielle PHP avec les extensions requises
 FROM php:8.2-fpm
 
-# Installer les dépendances système, extensions PHP
-RUN apt-get update && apt-get install -y \
+# Installer les dépendances système et extensions PHP (Wave : gd + exif, driver image = gd)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     curl \
     git \
@@ -11,15 +11,14 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libonig-dev \
     libzip-dev \
-    zip \
-    libmcrypt-dev \
+    libicu-dev \
     libxml2-dev \
-    libmagickwand-dev \
     libpq-dev \
     mariadb-client \
+    zip \
     gnupg \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
+    && docker-php-ext-install -j"$(nproc)" \
         gd \
         mbstring \
         pdo \
@@ -30,8 +29,6 @@ RUN apt-get update && apt-get install -y \
         intl \
         opcache \
         exif \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick exif \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Installer Node.js et npm (version stable)
