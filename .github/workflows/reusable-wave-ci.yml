@@ -1,5 +1,5 @@
 # Équivalent GitHub Actions du Jenkinsfile racine (Wave / monorepo).
-#
+#    
 # Secrets dépôt (Settings → Secrets → Actions) :
 #   SONAR_TOKEN          → analyse SonarCloud (optionnel ; étape ignorée si vide)
 #   DOCKER_IMAGE         → ex. abdoulie/wave-image (comme credential docker-image-name)
