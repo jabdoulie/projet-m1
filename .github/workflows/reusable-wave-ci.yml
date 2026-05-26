@@ -1,10 +1,10 @@
 # Équivalent GitHub Actions du Jenkinsfile racine (Wave / monorepo).
 #    
 # Secrets dépôt (Settings → Secrets → Actions) :
-#   SONAR_TOKEN          → analyse SonarCloud (optionnel ; étape ignorée si vide)
-#   DOCKER_IMAGE         → ex. abdoulie/wave-image (comme credential docker-image-name)
-#   DOCKER_USERNAME      → Docker Hub (comme docker-hub-credentials)
-#   DOCKER_PASSWORD      → Docker Hub token / mot de passe
+#   SONAR_TOKEN         → analyse SonarCloud (optionnel ; étape ignorée si vide)
+#   DOCKER_IMAGE        → ex. abdoulie/wave-image (comme credential docker-image-name)
+#   DOCKER_USERNAME     → Docker Hub (comme docker-hub-credentials)
+#   DOCKER_PASSWORD     → Docker Hub token / mot de passe
 #
 # Sur push vers main uniquement : build image, Trivy image, push Docker Hub,
 # commit deployment.yml (message avec [skip ci]), comme le Jenkinsfile.
