@@ -48,7 +48,7 @@ concurrency:
 env:
   DOCKER_TAG: ${{ github.run_number }}
   # Flag temporaire pour ignorer tout le déploiement (sans supprimer les étapes)
-  ENABLE_DEPLOY: "false"
+  ENABLE_DEPLOY: "true"
   # Anticipe la migration GitHub Actions vers Node.js 24
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
