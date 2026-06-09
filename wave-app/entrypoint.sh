@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 echo "Démarrage du conteneur..."
 
 # En K8s, DB_* viennent de wave-env / wave-secrets : ne pas écraser avec le .env de l'image (ex. DB_HOST=db).
@@ -22,36 +23,38 @@ while [ "$db_ready" -eq 0 ]; do
 done
 
 echo "Base de données prête. Installation de la dépendance doctrine/dbal..."
-
-# Installer la dépendance doctrine/dbal
 composer require doctrine/dbal
 
-echo "Dépendance doctrine/dbal installée. Lancement des migrations..."
+echo "Préparation des répertoires storage..."
+mkdir -p storage/logs storage/framework/cache/data storage/framework/sessions storage/framework/views
+mkdir -p bootstrap/cache
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
 
-# Exécuter les migrations
+echo "Lancement des migrations..."
 php artisan migrate --force
 
-# Seed des données
-php artisan db:seed --force
+echo "Seed (uniquement si la base est vide)..."
+USER_COUNT=$(mysql --skip-ssl -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USERNAME" -p"$DB_PASSWORD" -N -e "SELECT COUNT(*) FROM users" "$DB_DATABASE" 2>/dev/null || echo "0")
+if [ "$USER_COUNT" = "0" ]; then
+  php artisan db:seed --force
+else
+  echo "Utilisateurs déjà présents ($USER_COUNT), seed ignoré."
+fi
 
-# Vider les caches de Laravel
+echo "Nettoyage des caches..."
 php artisan config:clear
-php artisan cache:clear
+php artisan cache:clear || echo "WARN: cache:clear a échoué (permissions), on continue."
 php artisan route:clear
 php artisan view:clear
 
-# Donner les bonnes permissions si nécessaire
-chown -R www-data:www-data /var/www/wave/storage
-chmod -R 775 /var/www/wave/storage
-chown www-data:www-data /var/www/wave/storage/logs/laravel.log
-chmod 664 /var/www/wave/storage/logs/laravel.log
-mkdir -p storage/framework/cache
-mkdir -p storage/framework/sessions
-mkdir -p storage/framework/views
-chmod -R 775 storage
-chown -R www-data:www-data storage
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R 775 storage bootstrap/cache
+touch storage/logs/laravel.log
+chown www-data:www-data storage/logs/laravel.log
+chmod 664 storage/logs/laravel.log
+
 php artisan config:cache
 
-
-# Lancer le service PHP-FPM
+echo "Démarrage de PHP-FPM..."
 exec php-fpm
