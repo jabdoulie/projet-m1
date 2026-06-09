@@ -1,9 +1,12 @@
 #!/bin/sh
 echo "Démarrage du conteneur..."
 
-# Charger les variables d'environnement du fichier .env
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+# En K8s, DB_* viennent de wave-env / wave-secrets : ne pas écraser avec le .env de l'image (ex. DB_HOST=db).
+if [ -z "$DB_HOST" ] && [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
 fi
 
 # Attente que la base de données soit prête
