@@ -28,9 +28,8 @@ spec:
                 name: wave-nginx
                 port:
                   number: 80
-  # Décommentez pour activer HTTPS avec cert-manager
   tls:
-     - hosts:
-         - wave.local
-       secretName: wave-tls-secret
+    - hosts:
+        - wave.local
+      secretName: wave-tls-secret
 

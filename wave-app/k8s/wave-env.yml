@@ -13,7 +13,7 @@ data:
   APP_DEBUG: "false"
   APP_URL: "https://wave.local"
   FORCE_HTTPS: "true"
-  SESSION_SECURE_COOKIE: "false"
+  SESSION_SECURE_COOKIE: "true"
   
   # Base de données externe (serveur Database - Docker Compose)
   # IMPORTANT: Remplacer DATABASE_SERVER_IP par l'IP du serveur Database
