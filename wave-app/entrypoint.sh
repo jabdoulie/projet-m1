@@ -9,9 +9,10 @@ if [ -z "$DB_HOST" ] && [ -f .env ]; then
   set +a
 fi
 
-# Attente que la base de données soit prête
-until mysql -h "$DB_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SHOW DATABASES;" > /dev/null 2>&1; do
-  echo "En attente que la base de données soit prête..."
+# Attente que la base de données soit prête (SSL désactivé : client Debian → MySQL 8 Docker)
+echo "Connexion MySQL vers ${DB_HOST} (user=${DB_USERNAME})..."
+until mysql --ssl-mode=DISABLED -h "$DB_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SHOW DATABASES;" > /dev/null 2>&1; do
+  echo "En attente que la base de données soit prête... (host=${DB_HOST})"
   sleep 2
 done
 
