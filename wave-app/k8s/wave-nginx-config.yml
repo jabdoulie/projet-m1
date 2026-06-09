@@ -4,11 +4,9 @@ metadata:
   name: wave-nginx-config
 data:
   nginx.conf: |
-    user www-data;
+    user nginx;
     worker_processes auto;
-    pid /run/nginx.pid;
-    include /etc/nginx/modules-enabled/*.conf;
-
+    pid /var/run/nginx.pid;
 
     events {
         worker_connections  1024;
