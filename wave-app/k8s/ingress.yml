@@ -29,8 +29,8 @@ spec:
                 port:
                   number: 80
   # Décommentez pour activer HTTPS avec cert-manager
-  # tls:
-  #   - hosts:
-  #       - wave.local
-  #     secretName: wave-tls-secret
+  tls:
+     - hosts:
+         - wave.local
+       secretName: wave-tls-secret
 
