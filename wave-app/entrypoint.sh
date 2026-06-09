@@ -9,11 +9,16 @@ if [ -z "$DB_HOST" ] && [ -f .env ]; then
   set +a
 fi
 
-# Attente que la base de données soit prête (SSL désactivé : client Debian → MySQL 8 Docker)
+# Attente que la base de données soit prête (mariadb-client : --skip-ssl, pas --ssl-mode)
 echo "Connexion MySQL vers ${DB_HOST} (user=${DB_USERNAME})..."
-until mysql --ssl-mode=DISABLED -h "$DB_HOST" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SHOW DATABASES;" > /dev/null 2>&1; do
-  echo "En attente que la base de données soit prête... (host=${DB_HOST})"
-  sleep 2
+db_ready=0
+while [ "$db_ready" -eq 0 ]; do
+  if mysql --skip-ssl -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USERNAME" -p"$DB_PASSWORD" -e "SHOW DATABASES;" > /dev/null 2>&1; then
+    db_ready=1
+  else
+    echo "En attente que la base de données soit prête... (host=${DB_HOST})"
+    sleep 2
+  fi
 done
 
 echo "Base de données prête. Installation de la dépendance doctrine/dbal..."
