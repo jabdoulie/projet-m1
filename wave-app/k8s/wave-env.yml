@@ -27,10 +27,10 @@ data:
   REDIS_PORT: "6379"
   REDIS_PASSWORD: ""
   
-  # Cache & Session
-  CACHE_DRIVER: "redis"
-  SESSION_DRIVER: "redis"
-  QUEUE_CONNECTION: "redis"
+  # Cache & Session (file/sync : pas d'extension phpredis dans l'image PHP)
+  CACHE_DRIVER: "file"
+  SESSION_DRIVER: "file"
+  QUEUE_CONNECTION: "sync"
   
   # Logging
   LOG_CHANNEL: "stderr"
