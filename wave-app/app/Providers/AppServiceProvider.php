@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        if ($this->app->environment() == 'production') {
+        if ($this->app->environment('production') && filter_var(env('FORCE_HTTPS', false), FILTER_VALIDATE_BOOLEAN)) {
             $this->app['request']->server->set('HTTPS', true);
         }
 
