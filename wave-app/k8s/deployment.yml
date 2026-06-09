@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: wave-app
-          image: abdoulie/wave-image:18
+          image: abdoulie/wave-image:19
           imagePullPolicy: Always
           workingDir: /var/www/wave
           ports:
@@ -95,7 +95,7 @@ spec:
     spec:
       initContainers:
         - name: copy-static-files
-          image: abdoulie/wave-image:18
+          image: abdoulie/wave-image:19
           command: ['sh', '-c', 'cp -r /var/www/wave/public /shared/public']
           volumeMounts:
             - name: shared-public
