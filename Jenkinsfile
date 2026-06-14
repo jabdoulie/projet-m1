@@ -20,7 +20,7 @@
  *    - Secret: nom de l'image Docker (ex: abdoulie/wave-image)
  * 
  * 5. git-repo-url (Secret text)
- *    - Secret: URL du repo GitHub (ex: github.com/username/projet-m1)
+ *    - Secret: URL du repo GitHub (ex: github.com/username/PE_2526_M1DOA_Jallow_Fall_ELJabri)
  * 
  * OUTILS A CONFIGURER (Manage Jenkins > Tools):
  * - sonar-scanner : SonarQube Scanner

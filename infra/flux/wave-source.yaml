@@ -9,7 +9,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 1m
-  url: https://github.com/jabdoulie/projet-m1
+  url: https://github.com/jabdoulie/PE_2526_M1DOA_Jallow_Fall_ELJabri
   ref:
     branch: main
   # Pour un repo privé, décommenter et configurer le secret

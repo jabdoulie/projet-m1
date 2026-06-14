@@ -9,7 +9,7 @@
   vars:
     flux_version: "2.2.3"
     github_owner: "jabdoulie"
-    github_repo: "projet-m1"
+    github_repo: "PE_2526_M1DOA_Jallow_Fall_ELJabri"
     github_branch: "main"
 
   tasks:
